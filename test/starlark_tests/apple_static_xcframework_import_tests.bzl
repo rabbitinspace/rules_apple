@@ -433,6 +433,20 @@ def apple_static_xcframework_import_test_suite(name):
             tags = [name],
         )
 
+    # Verify versioned Static Framework XCFrameworks are not embedded outside macOS, where code
+    # signing rejects versioned bundles.
+    for build_type, arch in [("simulator", "x86_64"), ("device", "arm64")]:
+        archive_contents_test(
+            name = "{}_does_not_embed_ios_versioned_framework_xcframework_{}_build".format(name, build_type),
+            build_type = build_type,
+            cpus = {"ios_multi_cpus": [arch]},
+            target_under_test = "//test/starlark_tests/targets_under_test/ios:app_with_imported_static_versioned_framework_xcframework",
+            not_contains = [
+                "$BUNDLE_ROOT/Frameworks/generated_static_versioned_framework_xcframework.framework",
+            ],
+            tags = [name],
+        )
+
     native.test_suite(
         name = name,
         tags = [name],

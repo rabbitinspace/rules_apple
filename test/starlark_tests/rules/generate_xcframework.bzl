@@ -775,7 +775,10 @@ represented as a dotted version number as values.
             ),
             "include_versioned_frameworks": attr.bool(
                 default = False,
-                doc = "Include versioned frameworks for macOS static frameworks.",
+                doc = """\
+Use the versioned bundle layout of macOS for the static frameworks of every platform. Only macOS
+supports versioned frameworks: other platforms test frameworks that ship one anyway.
+""",
             ),
         } | _GENERATE_XCFRAMEWORK_TOOL_ATTRS,
     ),

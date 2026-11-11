@@ -7615,3 +7615,55 @@ ios_application(
     tags = common.fixture_tags,
     deps = ["//test/starlark_tests/resources:objc_main_lib"],
 )
+
+generate_static_framework_xcframework(
+    name = "generated_static_versioned_framework_xcframework",
+    srcs = ["//test/starlark_tests/resources/frameworks:SharedClass.m"],
+    hdrs = ["//test/starlark_tests/resources/frameworks:SharedClass.h"],
+    include_privacy_manifest = True,
+    include_versioned_frameworks = True,
+    minimum_os_versions = {
+        "ios": common.min_os_ios.oldest_supported,
+        "ios_simulator": common.min_os_ios.oldest_supported,
+    },
+    platforms = {
+        "ios": ["arm64"],
+        "ios_simulator": [
+            "x86_64",
+            "arm64",
+        ],
+    },
+    tags = common.fixture_tags,
+)
+
+apple_static_xcframework_import(
+    name = "ios_imported_static_versioned_framework_xcframework",
+    tags = common.fixture_tags,
+    xcframework_imports = [":generated_static_versioned_framework_xcframework"],
+)
+
+objc_library(
+    name = "static_versioned_framework_xcframework_depending_lib",
+    srcs = ["@bazel_tools//tools/objc:objc_dummy.mm"],
+    tags = common.fixture_tags,
+    deps = [":ios_imported_static_versioned_framework_xcframework"],
+)
+
+ios_application(
+    name = "app_with_imported_static_versioned_framework_xcframework",
+    bundle_id = "com.google.example",
+    families = [
+        "iphone",
+        "ipad",
+    ],
+    infoplists = [
+        "//test/starlark_tests/resources:Info.plist",
+    ],
+    minimum_os_version = common.min_os_ios.nplus1,
+    provisioning_profile = "//test/testdata/provisioning:integration_testing_ios.mobileprovision",
+    tags = common.fixture_tags,
+    deps = [
+        ":static_versioned_framework_xcframework_depending_lib",
+        "//test/starlark_tests/resources:objc_main_lib",
+    ],
+)

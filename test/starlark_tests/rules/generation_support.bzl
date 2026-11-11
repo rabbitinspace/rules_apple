@@ -292,8 +292,9 @@ def _create_framework(
             framework bundle (optional).
         include_resource_bundle: Boolean to indicate if a resource bundle should be added to
             the framework bundle (optional).
-        include_versioned_frameworks: Boolean to indicate if the framework should include additional
-            versions of the framework under the Versions directory.
+        include_versioned_frameworks: Boolean to indicate if the framework should use the versioned
+            bundle layout of macOS, with additional versions of the framework under the Versions
+            directory, whatever the target OS.
         is_dynamic: Whether the generated binary is dynamic.
         module_interfaces: List of Swift module interface files for the framework bundle (optional).
         shallow_resource_bundle: Boolean to indicate if the resource bundle should be placed at the
@@ -307,6 +308,7 @@ def _create_framework(
     bundle_directory = paths.join(base_path, bundle_name + ".framework")
 
     is_macos_framework = target_os == "macos"
+    uses_macos_layout = is_macos_framework or include_versioned_frameworks
 
     # macOS frameworks can include multiple framework versions under:
     #     MyFramework.framework/Versions
@@ -319,7 +321,7 @@ def _create_framework(
     framework_directories = [bundle_directory]
     versions_directory = paths.join(bundle_directory, "Versions")
 
-    if is_macos_framework and include_versioned_frameworks:
+    if include_versioned_frameworks:
         framework_directories = [
             paths.join(versions_directory, "A"),
             paths.join(versions_directory, "B"),
@@ -341,7 +343,7 @@ def _create_framework(
 
     for framework_directory in framework_directories:
         resources_directory = paths.join(framework_directory, "Resources")
-        infoplist_directory = resources_directory if is_macos_framework else framework_directory
+        infoplist_directory = resources_directory if uses_macos_layout else framework_directory
         framework_plist = intermediates.file(
             actions = actions,
             file_name = paths.join(infoplist_directory, "Info.plist"),
@@ -383,7 +385,7 @@ def _create_framework(
         for framework_directory in framework_directories:
             manifest_directory = paths.join(
                 framework_directory,
-                "Resources" if is_macos_framework else "",
+                "Resources" if uses_macos_layout else "",
             )
             privacy_manifest = intermediates.file(
                 actions = actions,
@@ -397,7 +399,7 @@ def _create_framework(
     if include_resource_bundle:
         for framework_directory in framework_directories:
             resources_directory = paths.join(framework_directory, "Resources")
-            if shallow_resource_bundle and not is_macos_framework:
+            if shallow_resource_bundle and not uses_macos_layout:
                 resources_directory = framework_directory
             resources_path = paths.join(resources_directory, bundle_name + ".bundle")
 
@@ -410,7 +412,7 @@ def _create_framework(
             actions.write(output = resource_file, content = "Mock resource bundle")
             framework_files.append(resource_file)
 
-    if is_macos_framework and include_versioned_frameworks:
+    if include_versioned_frameworks:
         framework_files.extend(
             _create_macos_framework_symlinks(
                 actions = actions,

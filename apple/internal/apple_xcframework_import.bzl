@@ -679,7 +679,10 @@ def _apple_static_xcframework_import_impl(ctx):
     # is replaced by a stub binary when bundling.
     bundling_imports = []
     if xcframework.bundle_type == _BUNDLE_TYPE.frameworks:
-        framework_paths = framework_import_support.embeddable_framework_paths(xcframework_imports)
+        framework_paths = framework_import_support.embeddable_framework_paths(
+            framework_files = xcframework_imports,
+            platform = target_triplet.os,
+        )
         if xcframework_library.framework_files:
             bundling_imports = framework_import_support.embedded_static_framework_files(
                 bundle_name = xcframework.library_name,

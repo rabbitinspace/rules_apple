@@ -485,14 +485,30 @@ def _has_versioned_framework_files(framework_files):
             return True
     return False
 
-def _embeddable_framework_paths(framework_files):
-    """Returns the framework bundle paths with an Info.plist, which Xcode requires to embed them."""
+def _embeddable_framework_paths(*, framework_files, platform):
+    """Returns the paths of the framework bundles that can be embedded for a platform.
+
+    Xcode requires an Info.plist to embed a framework. Only macOS supports versioned bundles, so a
+    framework with a Versions directory is not embeddable on other platforms: code signing rejects
+    the bundle.
+
+    Args:
+        framework_files: List of File references for imported framework or XCFramework files.
+        platform: The target platform, as the `os` of a normalized Clang target triplet.
+    Returns:
+        A dictionary whose keys are the embeddable framework bundle paths.
+    """
     framework_paths = {}
+    versioned_framework_paths = {}
     for f in framework_files:
-        if f.basename != "Info.plist" or ".framework/" not in f.short_path:
+        if ".framework/" not in f.short_path:
             continue
         framework_path = bundle_paths.farthest_parent(f.short_path, "framework")
         relative_path = paths.relativize(f.short_path, framework_path)
+        if relative_path.startswith("Versions/"):
+            versioned_framework_paths[framework_path] = True
+        if f.basename != "Info.plist":
+            continue
 
         # macOS frameworks are only embeddable as versioned frameworks.
         if relative_path == "Info.plist" or (
@@ -501,7 +517,14 @@ def _embeddable_framework_paths(framework_files):
             relative_path.count("/") == 3
         ):
             framework_paths[framework_path] = True
-    return framework_paths
+
+    if platform == "macos":
+        return framework_paths
+    return {
+        framework_path: True
+        for framework_path in framework_paths
+        if framework_path not in versioned_framework_paths
+    }
 
 def _embedded_static_framework_files(*, bundle_name, framework_files, framework_paths):
     """Returns the files Xcode embeds for static frameworks within the given framework paths.
