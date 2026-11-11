@@ -489,8 +489,8 @@ def _embeddable_framework_paths(*, framework_files, platform):
     """Returns the paths of the framework bundles that can be embedded for a platform.
 
     Xcode requires an Info.plist to embed a framework. Only macOS supports versioned bundles, so a
-    framework with a Versions directory is not embeddable on other platforms: code signing rejects
-    the bundle.
+    framework with versioned files is not embeddable on other platforms: it would be bundled as a
+    versioned framework, which those platforms cannot install.
 
     Args:
         framework_files: List of File references for imported framework or XCFramework files.
@@ -504,11 +504,11 @@ def _embeddable_framework_paths(*, framework_files, platform):
         if ".framework/" not in f.short_path:
             continue
         framework_path = bundle_paths.farthest_parent(f.short_path, "framework")
-        relative_path = paths.relativize(f.short_path, framework_path)
-        if relative_path.startswith("Versions/"):
+        if _has_versioned_framework_files([f]):
             versioned_framework_paths[framework_path] = True
         if f.basename != "Info.plist":
             continue
+        relative_path = paths.relativize(f.short_path, framework_path)
 
         # macOS frameworks are only embeddable as versioned frameworks.
         if relative_path == "Info.plist" or (
